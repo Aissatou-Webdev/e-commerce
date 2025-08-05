@@ -1,17 +1,16 @@
 import React from 'react';
-
 import { Link } from "react-router-dom";
-import imgBanner from "../assets/image/Vaseline Cocoa Radiant.jpg"; // Remplace avec ton image de bannière
+
+import imgBanner from "../assets/image/Vaseline Cocoa Radiant.jpg";
 import img1 from "../assets/image/Vaseline Cocoa Radiant (1).jpg";
 import img2 from "../assets/image/Rouge à lèvre1.jpg";
 import img3 from "../assets/image/Font de teint.jpg";
 
-
 const Home = () => {
-
-  
   return (
-    <div className='w-screen'>
+    <div className="w-screen">
+     
+
       {/* Bannière */}
       <div className="relative w-full h-[400px] bg-black text-white flex items-center justify-center">
         <img
@@ -33,7 +32,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Section Produits phares */}
+      {/* Produits phares */}
       <section className="py-12 px-6">
         <h2 className="text-3xl font-bold text-center mb-6">Nos Produits Phares</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -63,7 +62,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Section À propos */}
+      {/* À propos */}
       <section className="py-12 px-6 bg-gray-500">
         <h2 className="text-3xl font-bold text-center mb-6">À Propos de Nous</h2>
         <p className="text-lg text-center max-w-3xl mx-auto">

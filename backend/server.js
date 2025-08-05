@@ -1,48 +1,72 @@
-const express = require('express');
-const cors = require('cors');
-const mysql = require('mysql2');
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
+const adminRoutes = require("./Routes/Admin");
+const authAdminRoutes = require("./Routes/authAdmin");
+const clientRoutes = require("./Routes/client"); // ✅ Ajout des routes client
+const authClientRoutes = require("./Routes/authClient");
 
 const app = express();
-const PORT = 5000;
+const PORT =  5000;
 
+
+// ✅ Middleware
 app.use(cors());
-app.use(express.json()); // Permet d'analyser les requêtes en JSON
+app.use(express.json());
 
-// Connexion à la base de données MySQL
-const db = mysql.createConnection({
-  host: 'localhost', // Adresse du serveur MySQL
-  user: 'root', // Ton nom d'utilisateur MySQL
-  password: '', // Ton mot de passe MySQL
-  database: 'ecommerce' // Le nom de ta base de données
-});
+app.use("/api/client", authClientRoutes);
 
-db.connect(err => {
-  if (err) {
-    console.error('Erreur de connexion à la base de données:', err);
-  } else {
-    console.log('Connecté à MySQL ✅');
-  }
-});
+// 📂 Permet d'accéder aux images depuis /uploads
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Route pour enregistrer un message dans la base de données
-app.post('/api/contact', (req, res) => {
-  const {firstname, name, email, message } = req.body;
+// 🔐 Routes d'authentification admin
+app.use("/api/admin", authAdminRoutes);
 
-  if (!firstname || !name || !email || !message) {
-    return res.status(400).json({ success: false, message: 'Tous les champs sont obligatoires' });
-  }
+// 📦 Routes de gestion admin (produits, commandes, etc.)
+app.use("/api/admin", adminRoutes);
 
-  const sql = 'INSERT INTO messages (firstname, name, email, message) VALUES (?, ?, ?, ?)';
-  db.query(sql, [firstname, name, email, message], (err, result) => {
-    if (err) {
-      console.error('Erreur lors de l\'insertion du message:', err);
-      return res.status(500).json({ success: false, message: 'Erreur serveur' });
-    }
-    res.status(200).json({ success: true, message: 'Message enregistré avec succès !' });
+// 👤 Routes client
+app.use("/api/client", clientRoutes); // ✅ Ajout
+
+// 🗑️ Supprimer un utilisateur
+app.delete("/api/admin/users/:id", (req, res) => {
+  const { id } = req.params;
+  db.query("DELETE FROM users WHERE id = ?", [id], (err, result) => {
+    if (err) return res.status(500).json({ error: "Erreur serveur" });
+    res.status(200).json({ message: "Utilisateur supprimé" });
   });
 });
 
-// Démarrer le serveur
+// 📩 Enregistrement d’un message depuis le formulaire contact
+app.post("/api/contact", (req, res) => {
+  const { firstname, name, email, message } = req.body;
+
+  if (!firstname || !name || !email || !message) {
+    return res.status(400).json({
+      success: false,
+      message: "Tous les champs sont obligatoires",
+    });
+  }
+
+  const sql =
+    "INSERT INTO messages (firstname, name, email, message) VALUES (?, ?, ?, ?)";
+  db.query(sql, [firstname, name, email, message], (err, result) => {
+    if (err) {
+      console.error("❌ Erreur lors de l'insertion du message:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Erreur serveur" });
+    }
+    res.status(200).json({
+      success: true,
+      message: "Message enregistré avec succès !",
+    });
+  });
+});
+
+
+
+// 🚀 Démarrage du serveur
 app.listen(PORT, () => {
-  console.log(`Serveur en écoute sur le port ${PORT} 🚀`);
+  console.log(`🚀 Serveur en écoute sur : http://localhost:${PORT}`);
 });

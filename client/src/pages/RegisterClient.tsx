@@ -83,7 +83,7 @@ const RegisterClient = () => {
 
         <button
           type="submit"
-          className="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700"
+          className="w-full bg-black text-yellow-400 font-semibold py-3 rounded hover:bg-gray-900 transition"
         >
           S'inscrire
         </button>

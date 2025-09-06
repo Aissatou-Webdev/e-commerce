@@ -1,70 +1,111 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const db = require("./config/db");
+const bcrypt = require("bcrypt"); // 🔹 pour hacher le mot de passe
+
+// 📂 Import des routes
 const adminRoutes = require("./Routes/Admin");
 const authAdminRoutes = require("./Routes/authAdmin");
-const clientRoutes = require("./Routes/client"); // ✅ Ajout des routes client
+const clientRoutes = require("./Routes/client");
 const authClientRoutes = require("./Routes/authClient");
+const cartRoutes = require("./Routes/cart");
 
 const app = express();
-const PORT =  5000;
+const PORT = process.env.PORT || 5000;
 
-
-// ✅ Middleware
-app.use(cors());
+// ✅ Middlewares
+app.use(cors({ origin: "*" })); 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.use("/api/client", authClientRoutes);
-
-// 📂 Permet d'accéder aux images depuis /uploads
+// 📂 Rendre le dossier uploads accessible pour les images
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// 🔐 Routes d'authentification admin
-app.use("/api/admin", authAdminRoutes);
+// ======================== 🔐 AUTHENTIFICATION ========================
+app.use("/api/auth/client", authClientRoutes); // Inscription & login client
+app.use("/api/auth/admin", authAdminRoutes);   // Login admin
 
-// 📦 Routes de gestion admin (produits, commandes, etc.)
+// ======================== 👤 CLIENT ========================
+app.use("/api/client", clientRoutes);
+
+// ======================== 📦 ADMIN ========================
 app.use("/api/admin", adminRoutes);
 
-// 👤 Routes client
-app.use("/api/client", clientRoutes); // ✅ Ajout
+// ======================== 🔹 CREATION ADMIN ========================
+app.post("/api/admin/create", async (req, res) => {
+  try {
+    const { nom, email, password } = req.body;
 
-// 🗑️ Supprimer un utilisateur
-app.delete("/api/admin/users/:id", (req, res) => {
-  const { id } = req.params;
-  db.query("DELETE FROM users WHERE id = ?", [id], (err, result) => {
-    if (err) return res.status(500).json({ error: "Erreur serveur" });
-    res.status(200).json({ message: "Utilisateur supprimé" });
-  });
+    if (!nom || !email || !password) {
+      return res.status(400).json({ message: "Tous les champs sont obligatoires" });
+    }
+
+    // Vérifie si l'admin existe déjà
+    const [existing] = await db.query("SELECT * FROM admins WHERE email = ?", [email]);
+    if (existing.length > 0) {
+      return res.status(400).json({ message: "Admin déjà existant" });
+    }
+
+    // Hachage du mot de passe
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insertion dans la table admins avec rôle 'admin'
+    await db.query(
+      "INSERT INTO admins (nom, email, password, role) VALUES (?, ?, ?, ?)",
+      [nom, email, hashedPassword, "admin"]
+    );
+
+    res.status(201).json({ message: "Admin créé avec succès ✅" });
+  } catch (err) {
+    console.error("Erreur création admin :", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
 });
 
-// 📩 Enregistrement d’un message depuis le formulaire contact
-app.post("/api/contact", (req, res) => {
+// ======================== 🛒 PANIER ========================
+app.use("/api/cart", cartRoutes);
+
+// ======================== 📩 CONTACT ========================
+app.post("/api/contact", (req, res, next) => {
   const { firstname, name, email, message } = req.body;
 
   if (!firstname || !name || !email || !message) {
-    return res.status(400).json({
-      success: false,
-      message: "Tous les champs sont obligatoires",
-    });
+    return res.status(400).json({ success: false, message: "Tous les champs sont obligatoires" });
   }
 
-  const sql =
-    "INSERT INTO messages (firstname, name, email, message) VALUES (?, ?, ?, ?)";
+  const sql = "INSERT INTO messages (firstname, name, email, message) VALUES (?, ?, ?, ?)";
   db.query(sql, [firstname, name, email, message], (err, result) => {
     if (err) {
-      console.error("❌ Erreur lors de l'insertion du message:", err);
-      return res
-        .status(500)
-        .json({ success: false, message: "Erreur serveur" });
+      console.error("❌ Erreur contact :", err);
+      return next(err); 
     }
-    res.status(200).json({
-      success: true,
-      message: "Message enregistré avec succès !",
-    });
+    res.status(201).json({ success: true, message: "Message enregistré avec succès !" });
   });
 });
 
+// ======================== ❌ SUPPRESSION UTILISATEUR (ADMIN) ========================
+app.delete("/api/admin/users/:id", (req, res, next) => {
+  const { id } = req.params;
+  db.query("DELETE FROM users WHERE id = ?", [id], (err, result) => {
+    if (err) return next(err);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Utilisateur introuvable" });
+    }
+    res.status(200).json({ message: "Utilisateur supprimé avec succès" });
+  });
+});
 
+// ======================== ⚠️ 404 - ROUTE INCONNUE ========================
+app.use((req, res) => {
+  res.status(404).json({ error: "Route introuvable" });
+});
+
+// ======================== ⚠️ GESTION GLOBALE DES ERREURS ========================
+app.use((err, req, res, next) => {
+  console.error("🔥 Erreur serveur :", err);
+  res.status(500).json({ error: "Erreur interne du serveur" });
+});
 
 // 🚀 Démarrage du serveur
 app.listen(PORT, () => {

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Navbar from "../Componente/Navbar";
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -9,6 +10,7 @@ const Contact = () => {
   });
   const [status, setStatus] = useState("");
   const [success, setSuccess] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -24,6 +26,7 @@ const Contact = () => {
     if (!firstname || !name || !email || !message) {
       setStatus("Tous les champs sont obligatoires ❗");
       setSuccess(false);
+      setShowNotification(true); // ✅ notification activée
       return;
     }
 
@@ -39,24 +42,38 @@ const Contact = () => {
         setStatus("💌 Message envoyé avec succès !");
         setFormData({ firstname: "", name: "", email: "", message: "" });
         setSuccess(true);
+        setShowNotification(true); // ✅ notification activée
       } else {
         setStatus("Une erreur est survenue. Veuillez réessayer.");
         setSuccess(false);
+        setShowNotification(true); // ✅ notification activée
       }
     } catch (error) {
       setStatus("Erreur de connexion avec le serveur.");
       setSuccess(false);
+      setShowNotification(true); // ✅ notification activée
     }
   };
 
+  // 🔹 La notification disparaît après 5 secondes
+  useEffect(() => {
+    if (showNotification) {
+      const timer = setTimeout(() => setShowNotification(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showNotification]);
+
   return (
+    <div className="min-h-screen flex flex-col justify-between  ">
+         <Navbar/>
+    
     <div className="w-full bg-gray-100 py-12 px-4">
       <div className="max-w-2xl mx-auto bg-white shadow-lg rounded-xl p-8">
         <h1 className="text-3xl font-bold text-center text-black mb-6">
           Contactez-nous
         </h1>
 
-        {status && (
+        {showNotification && status && (
           <div
             className={`text-center mb-4 p-3 rounded ${
               success
@@ -126,6 +143,7 @@ const Contact = () => {
         </form>
       </div>
     </div>
+        </div>
   );
 };
 

@@ -19,17 +19,30 @@ export default function AdminLogin() {
         password,
       });
 
+      // ✅ Sauvegarde du token + infos admin
       localStorage.setItem("adminToken", res.data.token);
+      localStorage.setItem("adminInfo", JSON.stringify(res.data.admin));
+
+      // ✅ Redirection automatique vers le dashboard admin
       navigate("/admin/dashboard");
     } catch (err: any) {
-      setError(err.response?.data?.error || "Erreur lors de la connexion");
+      console.error("Erreur login admin :", err);
+      setError(
+        err.response?.data?.message || 
+        "Erreur lors de la connexion. Vérifiez vos identifiants."
+      );
     }
   };
 
   return (
     <div className="flex justify-center items-center h-screen bg-gray-100">
-      <form onSubmit={handleLogin} className="bg-white p-8 rounded shadow-md w-96">
-        <h2 className="text-2xl font-bold mb-6 text-center">Connexion Admin</h2>
+      <form
+        onSubmit={handleLogin}
+        className="bg-white p-8 rounded shadow-md w-96"
+      >
+        <h2 className="text-2xl font-bold mb-6 text-center">
+          Connexion Admin
+        </h2>
 
         {error && <p className="text-red-500 mb-4">{error}</p>}
 
@@ -41,6 +54,7 @@ export default function AdminLogin() {
           className="w-full border p-2 mb-4 rounded"
           required
         />
+
         <input
           type="password"
           placeholder="Mot de passe"
@@ -49,11 +63,12 @@ export default function AdminLogin() {
           className="w-full border p-2 mb-4 rounded"
           required
         />
+
         <button
           type="submit"
           className="w-full bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600"
         >
-          Se connecter
+          Se connecter asb
         </button>
       </form>
     </div>

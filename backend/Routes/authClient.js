@@ -1,68 +1,56 @@
-// backend/routes/authClient.js
 const express = require("express");
 const router = express.Router();
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const mysql = require("mysql2/promise");
 const db = require("../config/db");
-require("dotenv").config();
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
-// 📝 Inscription client
-router.post("/register", async (req, res) => {
-  const { name, email, password, phone, address } = req.body;
+// Login client
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
 
   try {
-    const [existing] = await db.query("SELECT * FROM clients WHERE email = ?", [email]);
-    if (existing.length > 0) {
-      return res.status(400).json({ error: "Email déjà utilisé" });
-    }
+    const [rows] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+    if (rows.length === 0) return res.status(400).json({ message: "Utilisateur non trouvé" });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const client = rows[0];
+    const isMatch = await bcrypt.compare(password, client.password);
+    if (!isMatch) return res.status(400).json({ message: "Mot de passe incorrect" });
 
-    await db.query(
-      "INSERT INTO clients (name, email, password, phone, address) VALUES (?, ?, ?, ?, ?)",
-      [name, email, hashedPassword, phone, address]
+    const token = jwt.sign(
+      { id: client.id, role: "client" },
+      process.env.JWT_SECRET || "secret123",
+      { expiresIn: "24h" }
     );
 
-    res.status(201).json({ message: "Inscription réussie !" });
-  } catch (error) {
-    console.error("Erreur lors de l'inscription client :", error);
-    res.status(500).json({ error: "Erreur serveur" });
+    res.json({ token });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Erreur serveur" });
   }
 });
 
-// ✅ Middleware de vérification du token client
-const verifyClientToken = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader)
-    return res.status(401).json({ error: "Token manquant" });
+// Inscription client
+router.post("/register", async (req, res) => {
+  const { name, email, password } = req.body;
 
-  const token = authHeader.split(" ")[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.clientId = decoded.id;
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: "Token invalide" });
-  }
-};
+    // Vérifier si l'utilisateur existe déjà
+    const [rows] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+    if (rows.length > 0) return res.status(400).json({ message: "Email déjà utilisé" });
 
-// 👤 Route pour récupérer les infos du client connecté + ses commandes
-router.get("/profile", verifyClientToken, async (req, res) => {
-  try {
-    const [clientRows] = await db.query("SELECT id, name, email, phone, address FROM clients WHERE id = ?", [req.clientId]);
-    if (clientRows.length === 0)
-      return res.status(404).json({ error: "Client non trouvé" });
+    // Hasher le mot de passe
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    const [orders] = await db.query("SELECT * FROM orders WHERE user_id = ?", [req.clientId]);
+    // Ajouter l'utilisateur
+    await db.query(
+      "INSERT INTO users (name, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())",
+      [name, email, hashedPassword, "client"]
+    );
 
-    res.json({
-      client: clientRows[0],
-      orders,
-    });
-  } catch (error) {
-    console.error("Erreur lors de la récupération du profil client :", error);
-    res.status(500).json({ error: "Erreur serveur" });
+    res.status(201).json({ message: "Utilisateur créé avec succès" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Erreur serveur" });
   }
 });
 

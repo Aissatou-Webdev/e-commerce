@@ -34,12 +34,13 @@ export default function Navbar() {
           S'inscrire
         </Link>
 
+        {/* Lien vers la page de connexion */}
         <Link
-          to="/admin/login"
+          to="/login"
           className="hover:text-black flex items-center gap-1"
         >
           <UserCog size={18} />
-          Admin
+          Se connecter
         </Link>
       </nav>
     </header>

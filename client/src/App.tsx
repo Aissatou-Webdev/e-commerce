@@ -5,24 +5,27 @@ import Contact from "./pages/Contact";
 import Cart from "./pages/Cart";
 import EditProduct from "./pages/EditProduct";
 import Product from "./pages/Product";
-import AddProduct from "./pages/AddProduct"; // ✅ Formulaire d'ajout
+import AddProduct from "./pages/AddProduct";
 
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminProductsList from "./pages/admin/AdminProduct"; // ✅ Liste des produits
+import AdminProductsList from "./pages/admin/AdminProduct";
+import AdminLogin from "./pages/admin/LoginAdmin"; // ✅ Import du login admin
 import Navbar from "./Componente/Navbar";
 import Footer from "./Componente/Footer";
-import LoginAdmin from "./pages/admin/LoginAdmin";
 import AdminRoute from "./Componente/admin/AdminRoute";
+
+// ✅ On regroupe connexion admin + client dans une seule page
 import Login from "./pages/Login";
 import ClientProfile from "./pages/ClientProfile";
-import LoginClient from "./pages/client/LoginClient";
 import RegisterClient from "./pages/RegisterClient";
 
+// ✅ Toastify
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function App() {
   return (
     <div className="min-h-screen flex flex-col justify-between">
-      <Navbar />
 
       <main className="flex-grow">
         <Routes>
@@ -31,15 +34,17 @@ function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/product/:id" element={<Product />} />
+
+          {/* ✅ Page unique de connexion (Client) */}
           <Route path="/login" element={<Login />} />
+
+          {/* ✅ Page de connexion spécifique Admin */}
+          <Route path="/login-admin" element={<AdminLogin />} />
+
+          <Route path="/register" element={<RegisterClient />} />
           <Route path="/profil" element={<ClientProfile />} />
-          
 
-
-          {/* Connexion admin */}
-          <Route path="/admin/login" element={<LoginAdmin />} />
-
-          {/* Routes protégées */}
+          {/* ✅ Routes protégées pour Admin */}
           <Route
             path="/admin/dashboard"
             element={
@@ -48,10 +53,6 @@ function App() {
               </AdminRoute>
             }
           />
-
-          <Route path="/login" element={<LoginClient />} />
-          <Route path="/register" element={<RegisterClient />} />
-
           <Route
             path="/admin/add"
             element={
@@ -80,6 +81,9 @@ function App() {
       </main>
 
       <Footer />
+
+      {/* ✅ Notifications */}
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 }

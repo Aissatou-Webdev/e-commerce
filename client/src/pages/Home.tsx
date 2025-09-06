@@ -1,17 +1,19 @@
 import React from 'react';
 import { Link } from "react-router-dom";
 
-import imgBanner from "../assets/image/Vaseline Cocoa Radiant.jpg";
-import img1 from "../assets/image/Vaseline Cocoa Radiant (1).jpg";
-import img2 from "../assets/image/Rouge à lèvre1.jpg";
-import img3 from "../assets/image/Font de teint.jpg";
+import imgBanner from "../assets/image/vaseline_cocoa_radiant.jpg";
+import img1 from "../assets/image/vaseline_cocoa_radiant.jpg";
+import img2 from "../assets/image/rouge_levres.jpg";
+import img3 from "../assets/image/fontde_teint.jpg";
+import Navbar from '../Componente/Navbar';
 
 const Home = () => {
   return (
-    <div className="w-screen">
-     
+    <div className="min-h-screen flex flex-col justify-between  ">
+     <Navbar/>
 
-      {/* Bannière */}
+      <div className="w-screen">
+        {/* Bannière */}
       <div className="relative w-full h-[400px] bg-black text-white flex items-center justify-center">
         <img
           src={imgBanner}
@@ -71,6 +73,7 @@ const Home = () => {
           au quotidien.
         </p>
       </section>
+      </div>
     </div>
   );
 };

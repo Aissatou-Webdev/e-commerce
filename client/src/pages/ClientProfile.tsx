@@ -2,10 +2,24 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+interface Order {
+  id: number;
+  total_amount: number;
+  status: string;
+  created_at: string;
+}
+
 const ClientProfile = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
-  const [orders, setOrders] = useState([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem("clientToken");
@@ -14,31 +28,30 @@ const ClientProfile = () => {
       return;
     }
 
-    const fetchUser = async () => {
+    const fetchProfileAndOrders = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/profile", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUser(res.data);
+        // Récupérer le profil
+        const profileRes = await axios.get<User>(
+          "http://localhost:5000/api/client/profile",
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setUser(profileRes.data);
+
+        // Récupérer les commandes
+        const ordersRes = await axios.get<Order[]>(
+          "http://localhost:5000/api/client/orders",
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setOrders(ordersRes.data);
       } catch (error) {
-        console.error("Erreur profil client", error);
+        console.error("Erreur récupération profil ou commandes :", error);
         navigate("/login");
+      } finally {
+        setLoading(false);
       }
     };
 
-    const fetchOrders = async () => {
-      try {
-        const res = await axios.get("http://localhost:5000/api/client/orders", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setOrders(res.data);
-      } catch (error) {
-        console.error("Erreur commandes", error);
-      }
-    };
-
-    fetchUser();
-    fetchOrders();
+    fetchProfileAndOrders();
   }, [navigate]);
 
   const handleLogout = () => {
@@ -46,27 +59,35 @@ const ClientProfile = () => {
     navigate("/login");
   };
 
+  if (loading) return <p className="p-8">Chargement en cours...</p>;
+
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-4">Mon Profil</h1>
-      {user && (
+
+      {user ? (
         <div className="mb-6">
           <p><strong>Nom :</strong> {user.name}</p>
           <p><strong>Email :</strong> {user.email}</p>
         </div>
+      ) : (
+        <p>Impossible de récupérer le profil.</p>
       )}
 
-      <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded">
+      <button
+        onClick={handleLogout}
+        className="bg-red-500 text-white px-4 py-2 rounded mb-6"
+      >
         Déconnexion
       </button>
 
-      <div className="mt-10">
+      <div>
         <h2 className="text-xl font-bold mb-2">🧾 Mes Commandes</h2>
         {orders.length === 0 ? (
           <p>Aucune commande passée.</p>
         ) : (
           <ul className="space-y-3">
-            {orders.map((order: any) => (
+            {orders.map((order) => (
               <li key={order.id} className="border p-4 rounded shadow">
                 <p><strong>Commande #</strong> {order.id}</p>
                 <p><strong>Total :</strong> {order.total_amount} €</p>

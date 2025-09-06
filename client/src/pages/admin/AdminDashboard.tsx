@@ -1,130 +1,266 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+// src/pages/admin/AdminDashboard.tsx
+import { useState, useEffect } from "react";
 import axios from "axios";
-import AdminSidebar from "../../Componente/admin/AdminSidebar";
+import { useNavigate } from "react-router-dom";
+import AdminSidebar from "../../Componente/admin/AdminSidebar"; // ✅ Sidebar
 
+// 🔹 Interfaces
 interface Product {
   id: number;
   name: string;
+  description: string;
   price: number;
   stock: number;
+  category: string;
+  image?: string;
+}
+
+interface Client {
+  id: number;
+  name: string;
+  email: string;
+}
+
+interface Order {
+  id: number;
+  user_id: number;
+  total_amount: number;
+  status: string;
+  created_at: string;
+}
+
+interface Message {
+  id: number;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  created_at: string;
+}
+
+interface DashboardStats {
+  totalClients: number;
+  totalProducts: number;
+  totalOrders: number;
+  totalSales: number;
 }
 
 const AdminDashboard = () => {
+  const [activePage, setActivePage] = useState("dashboard");
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
 
+  const navigate = useNavigate();
+  const token = localStorage.getItem("adminToken");
+
+  // 🔒 Vérification token admin
   useEffect(() => {
-    const fetchProducts = async () => {
+    if (!token) navigate("/login-admin"); // 🔹 route corrigée
+  }, [navigate, token]);
+
+  // 🔹 Fetch data selon la page active
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!token) return;
+
       try {
-        const token = localStorage.getItem("adminToken");
-        const response = await axios.get("http://localhost:5000/api/admin/products", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setProducts(response.data);
-      } catch (error) {
-        console.error("Erreur lors du chargement des produits:", error);
-      } finally {
-        setLoading(false);
+        if (activePage === "dashboard") {
+          const res = await axios.get<DashboardStats>(
+            "http://localhost:5000/api/admin/dashboard",
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setStats(res.data);
+        } else if (activePage === "products") {
+          const res = await axios.get<Product[]>(
+            "http://localhost:5000/api/admin/products",
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setProducts(res.data);
+        } else if (activePage === "clients") {
+          const res = await axios.get<Client[]>(
+            "http://localhost:5000/api/admin/clients",
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setClients(res.data);
+        } else if (activePage === "orders") {
+          const res = await axios.get<Order[]>(
+            "http://localhost:5000/api/admin/orders",
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setOrders(res.data);
+        } else if (activePage === "messages") {
+          const res = await axios.get<Message[]>(
+            "http://localhost:5000/api/admin/messages",
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setMessages(res.data);
+        }
+      } catch (err) {
+        console.error(`Erreur fetch ${activePage}:`, err);
       }
     };
 
-    fetchProducts();
-  }, []);
+    fetchData();
+  }, [activePage, token]);
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce produit ?")) return;
+  // 🔑 Déconnexion
+  const handleLogout = () => {
+    localStorage.removeItem("adminToken");
+    navigate("/login");
+  };
 
-    try {
-      const token = localStorage.getItem("adminToken");
-      await axios.delete(`http://localhost:5000/api/admin/products/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setProducts(prev => prev.filter(product => product.id !== id));
-    } catch (error) {
-      console.error("Erreur lors de la suppression:", error);
+  // 🔹 Contenu selon page active
+  const renderPage = () => {
+    switch (activePage) {
+      case "dashboard":
+        return stats ? (
+          <div>
+            <h2 className="text-2xl font-bold mb-6">📊 Tableau de Bord</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-white shadow-md rounded-2xl p-4 text-center">
+                <h3 className="text-lg font-semibold">Clients</h3>
+                <p className="text-3xl text-blue-600 font-bold">{stats.totalClients}</p>
+              </div>
+              <div className="bg-white shadow-md rounded-2xl p-4 text-center">
+                <h3 className="text-lg font-semibold">Produits</h3>
+                <p className="text-3xl text-green-600 font-bold">{stats.totalProducts}</p>
+              </div>
+              <div className="bg-white shadow-md rounded-2xl p-4 text-center">
+                <h3 className="text-lg font-semibold">Commandes</h3>
+                <p className="text-3xl text-purple-600 font-bold">{stats.totalOrders}</p>
+              </div>
+              <div className="bg-white shadow-md rounded-2xl p-4 text-center">
+                <h3 className="text-lg font-semibold">Ventes (€)</h3>
+                <p className="text-3xl text-yellow-600 font-bold">{stats.totalSales}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p>Chargement des statistiques...</p>
+        );
+
+      case "products":
+        return (
+          <div>
+            <h2 className="text-xl font-bold mb-4">📦 Gestion des Produits</h2>
+            {products.length === 0 ? (
+              <p>Aucun produit disponible.</p>
+            ) : (
+              <ul className="space-y-3">
+                {products.map((p) => (
+                  <li key={p.id} className="border p-4 rounded shadow">
+                    <p><strong>Nom:</strong> {p.name}</p>
+                    <p><strong>Description:</strong> {p.description}</p>
+                    <p><strong>Prix:</strong> {p.price} €</p>
+                    <p><strong>Stock:</strong> {p.stock}</p>
+                    <p><strong>Catégorie:</strong> {p.category}</p>
+                    {p.image && (
+                      <img
+                        src={`http://localhost:5000/uploads/${p.image}`}
+                        alt={p.name}
+                        className="w-32 mt-2"
+                      />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+
+      case "clients":
+        return (
+          <div>
+            <h2 className="text-xl font-bold mb-4">👤 Gestion des Clients</h2>
+            {clients.length === 0 ? (
+              <p>Aucun client enregistré.</p>
+            ) : (
+              <ul className="space-y-3">
+                {clients.map((c) => (
+                  <li key={c.id} className="border p-4 rounded shadow">
+                    <p><strong>Nom:</strong> {c.name}</p>
+                    <p><strong>Email:</strong> {c.email}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+
+      case "orders":
+        return (
+          <div>
+            <h2 className="text-xl font-bold mb-4">🛒 Gestion des Commandes</h2>
+            {orders.length === 0 ? (
+              <p>Aucune commande passée.</p>
+            ) : (
+              <ul className="space-y-3">
+                {orders.map((o) => (
+                  <li key={o.id} className="border p-4 rounded shadow">
+                    <p><strong>Commande #</strong> {o.id}</p>
+                    <p><strong>Client ID:</strong> {o.user_id}</p>
+                    <p><strong>Total:</strong> {o.total_amount} €</p>
+                    <p><strong>Status:</strong> {o.status}</p>
+                    <p><strong>Date:</strong>{' '}
+                      {new Date(o.created_at).toLocaleDateString()}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+
+      case "messages":
+        return (
+          <div>
+            <h2 className="text-xl font-bold mb-4">✉️ Messages de Contact</h2>
+            {messages.length === 0 ? (
+              <p>Aucun message reçu.</p>
+            ) : (
+              <ul className="space-y-3">
+                {messages.map((m) => (
+                  <li key={m.id} className="border p-4 rounded shadow">
+                    <p><strong>Nom:</strong> {m.name}</p>
+                    <p><strong>Email:</strong> {m.email}</p>
+                    <p><strong>Sujet:</strong> {m.subject}</p>
+                    <p><strong>Message:</strong> {m.message}</p>
+                    <p><strong>Date:</strong>{' '}
+                      {new Date(m.created_at).toLocaleDateString()}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+
+      default:
+        return <h2 className="text-2xl font-bold">Bienvenue dans le tableau de bord Admin</h2>;
     }
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <AdminSidebar />
-
-      <main className="flex-1 ml-64 p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Dashboard Admin</h1>
-          <Link
-            to="/admin/add"
-            className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800"
-          >
-            + Ajouter un produit
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-8">Chargement...</div>
-        ) : (
-          <div className="bg-white rounded shadow">
-            <div className="px-6 py-4 border-b">
-              <h2 className="text-xl font-semibold">Produits ({products.length})</h2>
-            </div>
-
-            {products.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-500 mb-4">Aucun produit trouvé</p>
-                <Link
-                  to="/admin/add"
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                >
-                  Ajouter le premier produit
-                </Link>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nom</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prix</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {products.map((product) => (
-                      <tr key={product.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">{product.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{product.price}€</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{product.stock}</td>
-                        <td className="px-6 py-4 whitespace-nowrap space-x-2">
-                          <Link
-                            to={`/admin/products/edit/${product.id}`}
-                            className="text-blue-600 hover:underline"
-                          >
-                            Modifier
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(product.id)}
-                            className="text-red-600 hover:underline"
-                          >
-                            Supprimer
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-      </main>
+  <div className="flex min-h-screen bg-gray-100">
+    {/* Sidebar à gauche */}
+    <div className="w-64 bg-white shadow-md">
+      <AdminSidebar
+        activePage={activePage}
+        setActivePage={setActivePage}
+        handleLogout={handleLogout}
+      />
     </div>
-  );
+
+    {/* Contenu principal à droite */}
+    <main className="flex-1 p-6 overflow-y-auto">
+      {renderPage()}
+    </main>
+  </div>
+);
+
 };
 
 export default AdminDashboard;

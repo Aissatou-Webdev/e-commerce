@@ -6,8 +6,9 @@ const fs = require("fs");
 const multer = require("multer");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { verifyToken } = require("../middlewares/verifyToken");
+const  { verifyAdminToken } = require("../middlewares/verifyAdminToken");
 const requireAdmin = require("../middlewares/requireAdmin"); // ✅ ajout du middleware admin
+const verifyToken = require("../middlewares/verifyToken");
 
 // 🔧 Vérifie que le dossier uploads existe
 if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
@@ -60,12 +61,25 @@ router.post("/login", async (req, res) => {
 });
 
 // ===================== TEST AUTH ADMIN =====================
-router.get("/check-auth", verifyToken, requireAdmin, (req, res) => {
+router.get("/check-auth", verifyAdminToken, requireAdmin, (req, res) => {
   res.json({ message: "Authentifié ✅", adminId: req.user.id });
 });
 
+// ===================== GESTION PRODUITS (PUBLIC) =====================
+// Endpoint public pour récupérer les produits (pour le catalogue)
+router.get("/products/public", async (req, res) => {
+  try {
+    const [results] = await db.query("SELECT id, name, description, price, stock, category, image FROM products WHERE stock > 0");
+    console.log("📦 Produits publics récupérés:", results.length);
+    res.json(results);
+  } catch (err) {
+    console.error("Erreur récupération produits publics :", err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
 // ===================== GESTION PRODUITS =====================
-router.get("/products", verifyToken, requireAdmin, async (req, res) => {
+router.get("/products", verifyAdminToken, requireAdmin, async (req, res) => {
   try {
     const [results] = await db.query("SELECT * FROM products");
     res.json(results);
@@ -75,7 +89,7 @@ router.get("/products", verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
-router.post("/products", verifyToken, requireAdmin, upload.single("image"), async (req, res) => {
+router.post("/products", verifyAdminToken, requireAdmin, upload.single("image"), async (req, res) => {
   try {
     const { name, description, price, stock, category } = req.body;
     const image = req.file ? req.file.filename : null;
@@ -91,7 +105,7 @@ router.post("/products", verifyToken, requireAdmin, upload.single("image"), asyn
   }
 });
 
-router.put("/products/:id", verifyToken, requireAdmin, upload.single("image"), async (req, res) => {
+router.put("/products/:id", verifyAdminToken, requireAdmin, upload.single("image"), async (req, res) => {
   const { id } = req.params;
   const { name, description, price, stock, category } = req.body;
   const image = req.file ? req.file.filename : null;
@@ -108,7 +122,7 @@ router.put("/products/:id", verifyToken, requireAdmin, upload.single("image"), a
   }
 });
 
-router.delete("/products/:id", verifyToken, requireAdmin, async (req, res) => {
+router.delete("/products/:id", verifyAdminToken, requireAdmin, async (req, res) => {
   const { id } = req.params;
   try {
     await db.query("DELETE FROM products WHERE id = ?", [id]);
@@ -120,7 +134,7 @@ router.delete("/products/:id", verifyToken, requireAdmin, async (req, res) => {
 });
 
 // ===================== GESTION CLIENTS =====================
-router.get("/clients", verifyToken, requireAdmin, async (req, res) => {
+router.get("/clients", verifyAdminToken, requireAdmin, async (req, res) => {
   try {
     const [clients] = await db.query("SELECT id, name, email FROM users WHERE role='client'");
     res.json(clients);
@@ -131,7 +145,7 @@ router.get("/clients", verifyToken, requireAdmin, async (req, res) => {
 });
 
 // ===================== GESTION COMMANDES =====================
-router.get("/orders", verifyToken, requireAdmin, async (req, res) => {
+router.get("/orders", verifyAdminToken, requireAdmin, async (req, res) => {
   try {
     const [orders] = await db.query("SELECT * FROM orders ORDER BY created_at DESC");
     res.json(orders);
@@ -142,7 +156,7 @@ router.get("/orders", verifyToken, requireAdmin, async (req, res) => {
 });
 
 // ===================== GESTION MESSAGES =====================
-router.get("/messages", verifyToken, requireAdmin, async (req, res) => {
+router.get("/messages", verifyAdminToken, requireAdmin, async (req, res) => {
   try {
     const [messages] = await db.query("SELECT * FROM messages ORDER BY created_at DESC");
     res.json(messages);
@@ -153,12 +167,12 @@ router.get("/messages", verifyToken, requireAdmin, async (req, res) => {
 });
 
 // ===================== DASHBOARD ADMIN =====================
-router.get("/dashboard", verifyToken, requireAdmin, async (req, res) => {
+router.get("/dashboard", verifyAdminToken, async (req, res) => {
   try {
-    const [[{ totalClients }]] = await db.query("SELECT COUNT(*) as totalClients FROM users WHERE role='client'");
-    const [[{ totalProducts }]] = await db.query("SELECT COUNT(*) as totalProducts FROM products");
-    const [[{ totalOrders }]] = await db.query("SELECT COUNT(*) as totalOrders FROM orders");
-    const [[{ totalSales }]] = await db.query("SELECT IFNULL(SUM(total_amount), 0) as totalSales FROM orders WHERE status='paid'");
+    const [[{ totalClients }]] = await db.query("SELECT COUNT(*) AS totalClients FROM users WHERE role='client'");
+    const [[{ totalProducts }]] = await db.query("SELECT COUNT(*) AS totalProducts FROM products");
+    const [[{ totalOrders }]] = await db.query("SELECT COUNT(*) AS totalOrders FROM orders");
+    const [[{ totalSales }]] = await db.query("SELECT COALESCE(SUM(total_amount), 0) AS totalSales FROM orders WHERE status = 'paid'");
 
     res.json({
       totalClients,
@@ -167,9 +181,10 @@ router.get("/dashboard", verifyToken, requireAdmin, async (req, res) => {
       totalSales,
     });
   } catch (err) {
-    console.error("Erreur récupération dashboard :", err);
-    res.status(500).json({ error: "Erreur serveur" });
+    console.error("Erreur récupération dashboard:", err);
+    res.status(500).json({ message: "Erreur serveur lors du chargement du dashboard" });
   }
 });
+
 
 module.exports = router;

@@ -10,7 +10,7 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
 
   if (!token) {
     // Si pas de token, redirige vers la page de login admin
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/login-admin" replace />;
   }
 
   // Sinon affiche le composant demandé

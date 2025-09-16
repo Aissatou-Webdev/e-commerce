@@ -17,7 +17,7 @@ function verifyAdminToken(req, res, next) {
     const token = parts[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret123");
 
-    req.adminId = decoded.id; // stocke l'id admin
+    req.user = decoded; // stocke les infos admin (compatible avec requireAdmin)
     next();
   } catch (err) {
     console.error("Erreur vérification token admin :", err);

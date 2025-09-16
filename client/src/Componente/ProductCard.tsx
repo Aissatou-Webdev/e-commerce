@@ -1,7 +1,9 @@
 // src/components/ProductCard.tsx
+import { useContext } from "react";
+import { CartContext } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import axios from "axios";
 
 interface Product {
   id: number;
@@ -11,50 +13,38 @@ interface Product {
 }
 
 const ProductCard = ({ product }: { product: Product }) => {
-  const handleAddToCart = async () => {
-    const token = localStorage.getItem("clientToken");
-    const userId = localStorage.getItem("clientId");
+  const { addToCart } = useContext(CartContext);
+  const { isAuthenticated } = useAuth();
 
-    if (!token || !userId) {
-      toast.error("⚠️ Vous devez être connecté pour ajouter un produit au panier");
+  const handleAddToCart = () => {
+    if (!isAuthenticated) {
+      toast.error("⚠️ Vous devez être connecté pour ajouter au panier");
       return;
     }
 
-    console.log("Token:", token, "UserId:", userId, "ProductId:", product.id); // debug
+    // Convertir le produit au format attendu par le contexte
+    const cartProduct = {
+      ...product,
+      quantity: 1
+    };
 
-    try {
-      const res = await axios.post(
-        "http://localhost:5000/api",
-        { productId: product.id, quantity: 1 },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (res.data.cart) {
-        toast.success(`✅ ${product.name} ajouté au panier !`);
-        console.log("Panier mis à jour :", res.data.cart); // debug panier
-      } else {
-        toast.error(res.data.message || "Erreur lors de l'ajout au panier");
-      }
-    } catch (err: any) {
-      console.error("Erreur ajout panier :", err);
-      toast.error("❌ Impossible d'ajouter le produit au panier");
-    }
+    addToCart(cartProduct);
   };
 
   return (
-    <div className="p-4 border rounded-lg shadow-md text-center hover:shadow-xl hover:scale-105 transition-transform duration-300">
+    <div className="p-4 bg-gray-800/50 backdrop-blur-sm border border-yellow-500/20 rounded-xl shadow-lg text-center hover:shadow-yellow-500/10 hover:scale-105 transition-all duration-300">
       {product.image && (
         <img
           src={product.image}
           alt={product.name}
-          className="w-40 h-40 object-cover mx-auto mb-4 rounded-lg"
+          className="w-40 h-40 object-cover mx-auto mb-4 rounded-xl"
         />
       )}
-      <h3 className="text-lg font-semibold mb-2">{product.name}</h3>
-      <p className="text-gray-600 mb-4">{product.price} €</p>
+      <h3 className="text-lg font-semibold mb-2 text-yellow-100">{product.name}</h3>
+      <p className="text-amber-400 mb-4 font-bold">{product.price} €</p>
       <button
         onClick={handleAddToCart}
-        className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition-colors duration-300"
+        className="bg-gradient-to-r from-yellow-600 to-amber-600 text-black px-4 py-2 rounded-xl hover:from-yellow-500 hover:to-amber-500 transition-all duration-300 hover:scale-105 font-semibold"
       >
         Ajouter au panier
       </button>

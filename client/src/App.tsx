@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Home from "./pages/Home";
 import Catalog from "./pages/Catalog";
 import Contact from "./pages/Contact";
@@ -8,7 +8,7 @@ import Product from "./pages/Product";
 import AddProduct from "./pages/AddProduct";
 
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminProductsList from "./pages/admin/AdminProduct";
+import AdminProducts from "./pages/admin/AdminProduct";
 import AdminLogin from "./pages/admin/LoginAdmin"; // ✅ Import du login admin
 import Navbar from "./Componente/Navbar";
 import Footer from "./Componente/Footer";
@@ -22,10 +22,35 @@ import RegisterClient from "./pages/RegisterClient";
 // ✅ Toastify
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { CartProvider } from "./context/CartContext";
+import { AuthProvider } from "./context/AuthContext";
 
 function App() {
   return (
+    <AuthProvider>
+      <CartProvider>
+        <AppContent />
+      </CartProvider>
+    </AuthProvider>
+  );
+}
+
+function AppContent() {
+  const location = useLocation();
+  
+  // ✅ Vérifier si l'utilisateur est admin ou sur une page admin
+  const isAdminToken = !!localStorage.getItem("adminToken");
+  const isAdminRoute = location.pathname.startsWith("/admin");
+  
+  // ✅ Masquer la navbar si : 
+  // - L'utilisateur a un token admin OU
+  // - L'utilisateur est sur une route admin (y compris /login-admin)
+  const shouldHideNavbar = isAdminToken || isAdminRoute;
+
+  return (
     <div className="min-h-screen flex flex-col justify-between">
+      {/* ✅ Afficher la navbar seulement si pas admin */}
+      {!shouldHideNavbar && <Navbar />}
 
       <main className="flex-grow">
         <Routes>
@@ -65,7 +90,7 @@ function App() {
             path="/admin/products"
             element={
               <AdminRoute>
-                <AdminProductsList />
+                <AdminProducts />
               </AdminRoute>
             }
           />
@@ -80,7 +105,8 @@ function App() {
         </Routes>
       </main>
 
-      <Footer />
+      {/* ✅ Afficher le footer seulement si pas admin */}
+      {!shouldHideNavbar && <Footer />}
 
       {/* ✅ Notifications */}
       <ToastContainer position="top-right" autoClose={3000} />
